@@ -6,10 +6,12 @@ class UsersController < ApplicationController
     @user = User.new
   end
 
+  
+
   def create
     @user = User.new(user_params)
     if @user.save
-      UserMailer.with(to: @user.email, name: @user.name).welcome.deliver_later(wait: 1.minutes)
+      UserMailer.with(to: @user.email, name: @user.name).welcome.deliver_later
       log_in(@user)
       redirect_to user_path(@user.id), notice: 'アカウントを登録しました。'
     else
@@ -29,6 +31,7 @@ class UsersController < ApplicationController
 
   def correct_user
     @user = User.find(params[:id])
+    return if current_user.nil?
     redirect_to current_user unless current_user?(@user)
   end
 end
