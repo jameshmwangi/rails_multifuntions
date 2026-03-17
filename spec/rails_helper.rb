@@ -13,29 +13,34 @@ end
 
 RSpec.configure do |config|
   config.fixture_path = "#{::Rails.root}/spec/fixtures"
-  config.use_transactional_fixtures = true
   config.infer_spec_type_from_file_location!
   config.filter_rails_from_backtrace!
-
   config.include FactoryBot::Syntax::Methods
 
-  # Disable transactional fixtures for system tests (Capybara needs persisted data)
-  config.before(:each, type: :system) do
-    config.use_transactional_fixtures = false
+  # Disable transactional fixtures globally — manage manually below
+  config.use_transactional_fixtures = false
+
+  config.around(:each) do |example|
+    if example.metadata[:type] == :system
+      # System specs: no transaction wrapping — Capybara needs real commits
+      example.run
+    else
+      # All other specs: wrap in transaction and roll back
+      ActiveRecord::Base.transaction do
+        example.run
+        raise ActiveRecord::Rollback
+      end
+    end
   end
 
-  config.after(:each, type: :system) do
-    config.use_transactional_fixtures = true
-  end
-
-  # Cleanup database and ActionMailer between tests
   config.before(:each, type: :system) do
-    # Clear ActionMailer deliveries to prevent test pollution
     ActionMailer::Base.deliveries.clear
   end
 
   config.after(:each, type: :system) do
-    # Truncate all tables after system tests
-    ActiveRecord::Base.connection.execute("TRUNCATE TABLE users, async_logs, active_storage_attachments, active_storage_blobs, active_job_locks RESTART IDENTITY CASCADE")
+    ActiveRecord::Base.connection.execute(
+      "TRUNCATE TABLE users, async_logs, active_storage_attachments, " \
+      "active_storage_blobs, active_job_locks RESTART IDENTITY CASCADE"
+    )
   end
 end
