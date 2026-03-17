@@ -31,7 +31,6 @@ class UsersController < ApplicationController
 
   def correct_user
     @user = User.find(params[:id])
-    return if current_user.nil?
     redirect_to current_user unless current_user?(@user)
   end
 end
